@@ -45,6 +45,11 @@ void update(double elapsedTime);
 void showFPS(GLFWwindow* window);
 bool initOpenGL();
 
+struct Rotation {
+    float angle;       // Rotation angle in radians
+    glm::vec3 axis;    // Rotation axis
+};
+
 //-----------------------------------------------------------------------------
 // Main Application Entry Point
 //-----------------------------------------------------------------------------
@@ -61,7 +66,7 @@ int main()
 	shaderProgram.loadShaders("shaders/basic.vert", "shaders/basic.frag");
 
 	// Load meshes and textures
-	constexpr int numModels = 4;
+	constexpr int numModels = 5;
 	Mesh mesh[numModels];
 	Texture2D texture[numModels];
 
@@ -69,18 +74,23 @@ int main()
 	mesh[1].loadOBJ("models/woodcrate.obj");
 	mesh[2].loadOBJ("models/robot.obj");
 	mesh[3].loadOBJ("models/floor.obj");
-	
+    mesh[4].loadOBJ("models/skull.obj");
+	// mesh[4].loadOBJ("models/cottage_obj.obj");
+
 	texture[0].loadTexture("textures/crate.jpg", true);
 	texture[1].loadTexture("textures/woodcrate_diffuse.jpg", true);
 	texture[2].loadTexture("textures/robot_diffuse.jpg", true);
 	texture[3].loadTexture("textures/tile_floor.jpg", true);
-	
+    texture[4].loadTexture("textures/skull.jpg", true);
+	// texture[4].loadTexture("textures/cottage_diffuse.png", true);
+
 	// Model positions
 	glm::vec3 modelPos[] = {
 		glm::vec3(-2.5f, 1.0f, 0.0f),	// crate1
 		glm::vec3(2.5f, 1.0f, 0.0f),	// crate2
 		glm::vec3(0.0f, 0.0f, -2.0f),	// robot
-		glm::vec3(0.0f, 0.0f, 0.0f)		// floor
+		glm::vec3(0.0f, 0.0f, 0.0f),	// floor
+        glm::vec3(4.5f, 2.0f, 0.0f)
 	};
 
 	// Model scale
@@ -88,8 +98,18 @@ int main()
 		glm::vec3(1.0f, 1.0f, 1.0f),	// crate1
 		glm::vec3(1.0f, 1.0f, 1.0f),	// crate2
 		glm::vec3(1.0f, 1.0f, 1.0f),	// robot
-		glm::vec3(10.0f, 1.0f, 10.0f)	// floor
+		glm::vec3(10.0f, 1.0f, 10.0f),	// floor
+        glm::vec3(0.1f, 0.1f, 0.1f)
 	};
+
+    // Model rotations
+    Rotation modelRotations[] = {
+        {0.0f, glm::vec3(0.0f, 1.0f, 0.0f)},  // crate1: no rotation
+        {0.0f, glm::vec3(0.0f, 1.0f, 0.0f)},  // crate2: no rotation
+        {0.0f, glm::vec3(0.0f, 1.0f, 0.0f)},  // robot: no rotation
+        {0.0f, glm::vec3(0.0f, 1.0f, 0.0f)},  // floor: no rotation
+        {glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)}  // last model: 90° around x-axis
+    };
 
 	double lastTime = glfwGetTime();
 
@@ -127,7 +147,13 @@ int main()
 		// Render the scene
 		for (int i = 0; i < numModels; i++)
 		{
-			model = glm::translate(glm::mat4(1.0), modelPos[i]) * glm::scale(glm::mat4(1.0), modelScale[i]);
+            glm::mat4 position = glm::translate(glm::mat4(1.0), modelPos[i]);
+            glm::mat4 modelScaling = glm::scale(glm::mat4(1.0), modelScale[i]);
+
+            Rotation rotation = modelRotations[i];
+            glm::mat4 modelRotation = glm::rotate(glm::mat4(1.0f), rotation.angle, rotation.axis);
+
+			model = position * modelRotation * modelScaling;
 			shaderProgram.setUniform("model", model);
 
 			texture[i].bind(0);		// set the texture before drawing.  Our simple OBJ mesh loader does not do materials yet.

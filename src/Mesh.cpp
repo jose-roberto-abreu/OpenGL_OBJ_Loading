@@ -39,97 +39,121 @@ Mesh::~Mesh()
 //-----------------------------------------------------------------------------
 bool Mesh::loadOBJ(const std::string& filename)
 {
-	std::vector<unsigned int> vertexIndices, uvIndices;
-	std::vector<glm::vec3> tempVertices;
-	std::vector<glm::vec2> tempUVs;
+    std::vector<unsigned int> vertexIndices, uvIndices;
+    std::vector<glm::vec3> tempVertices;
+    std::vector<glm::vec2> tempUVs;
 
+    if (filename.find(".obj") != std::string::npos)
+    {
+        std::ifstream fin(filename, std::ios::in);
+        if (!fin)
+        {
+            std::cerr << "Cannot open " << filename << std::endl;
+            return false;
+        }
 
-	if (filename.find(".obj") != std::string::npos)
-	{
-		std::ifstream fin(filename, std::ios::in);
-		if (!fin)
-		{
-			std::cerr << "Cannot open " << filename << std::endl;
-			return false;
-		}
+        std::cout << "Loading OBJ file " << filename << " ..." << std::endl;
 
-		std::cout << "Loading OBJ file " << filename << " ..." << std::endl;
+        std::string lineBuffer;
+        while (std::getline(fin, lineBuffer))
+        {
+            if (lineBuffer.substr(0, 2) == "v ")
+            {
+                std::istringstream v(lineBuffer.substr(2));
+                glm::vec3 vertex;
+                v >> vertex.x; v >> vertex.y; v >> vertex.z;
+                tempVertices.push_back(vertex);
+            }
+            else if (lineBuffer.substr(0, 2) == "vt")
+            {
+                std::istringstream vt(lineBuffer.substr(3));
+                glm::vec2 uv;
+                vt >> uv.s; vt >> uv.t;
+                tempUVs.push_back(uv);
+            }
+            else if (lineBuffer.substr(0, 2) == "f ")
+            {
+                // Parse the face data
+                std::istringstream f(lineBuffer.substr(2));
+                std::vector<std::string> faceIndices;
+                std::string indexGroup;
 
-		std::string lineBuffer;
-		while (std::getline(fin, lineBuffer))
-		{
-			if (lineBuffer.substr(0, 2) == "v ")
-			{
-				std::istringstream v(lineBuffer.substr(2));
-				glm::vec3 vertex;
-				v >> vertex.x; v >> vertex.y; v >> vertex.z;
-				tempVertices.push_back(vertex);
-			}
-			else if (lineBuffer.substr(0, 2) == "vt")
-			{
-				std::istringstream vt(lineBuffer.substr(3));
-				glm::vec2 uv;
-				vt >> uv.s; vt >> uv.t;
-				tempUVs.push_back(uv);
-			}
-			else if (lineBuffer.substr(0, 2) == "f ")
-			{
-				int p1, p2, p3; //to store mesh index
-				int t1, t2, t3; //to store texture index
-				int n1, n2, n3;
-				const char* face = lineBuffer.c_str();
-				#ifdef _MSC_VER
-				int match = sscanf_s(face, "f %i/%i/%i %i/%i/%i %i/%i/%i",
-					&p1, &t1, &n1,
-					&p2, &t2, &n2,
-					&p3, &t3, &n3);
-				#else
-				int match = sscanf(face, "f %i/%i/%i %i/%i/%i %i/%i/%i",
-					&p1, &t1, &n1,
-					&p2, &t2, &n2,
-					&p3, &t3, &n3);
-				#endif
-				if (match != 9)
-					std::cout << "Failed to parse OBJ file using our very simple OBJ loader" << std::endl;
+                while (f >> indexGroup)
+                {
+                    faceIndices.push_back(indexGroup);
+                }
 
-				// We are ignoring normals (for now)
+                // Check if it's a triangle or a quad
+                if (faceIndices.size() == 3 || faceIndices.size() == 4)
+                {
+                    // Process face as triangles
+                    for (size_t i = 0; i < faceIndices.size() - 2; i++)
+                    {
+                        // Always create a triangle (triangulating the quad)
+                        processFaceVertex(faceIndices[0], tempVertices, tempUVs, vertexIndices, uvIndices);
+                        processFaceVertex(faceIndices[i + 1], tempVertices, tempUVs, vertexIndices, uvIndices);
+                        processFaceVertex(faceIndices[i + 2], tempVertices, tempUVs, vertexIndices, uvIndices);
+                    }
+                }
+                else
+                {
+                    std::cerr << "Unsupported face format in OBJ file" << std::endl;
+                }
+            }
+        }
 
-				vertexIndices.push_back(p1);
-				vertexIndices.push_back(p2);
-				vertexIndices.push_back(p3);
+        // Close the file
+        fin.close();
 
-				uvIndices.push_back(t1);
-				uvIndices.push_back(t2);
-				uvIndices.push_back(t3);
-			}
-		}
+        // For each vertex of each triangle
+        for (unsigned int i = 0; i < vertexIndices.size(); i++)
+        {
+            // Get the attributes using the indices
+            glm::vec3 vertex = tempVertices[vertexIndices[i] - 1];
+            glm::vec2 uv = tempUVs[uvIndices[i] - 1];
 
-		// Close the file
-		fin.close();
+            Vertex meshVertex;
+            meshVertex.position = vertex;
+            meshVertex.texCoords = uv;
 
+            mVertices.push_back(meshVertex);
+        }
 
-		// For each vertex of each triangle
-		for (unsigned int i = 0; i < vertexIndices.size(); i++)
-		{
-			// Get the attributes using the indices
-			glm::vec3 vertex = tempVertices[vertexIndices[i] - 1];
-			glm::vec2 uv = tempUVs[uvIndices[i] - 1];
+        // Create and initialize the buffers
+        initBuffers();
 
-			Vertex meshVertex;
-			meshVertex.position = vertex;
-			meshVertex.texCoords = uv;
+        return (mLoaded = true);
+    }
 
-			mVertices.push_back(meshVertex);
-		}
+    // We shouldn't get here so return failure
+    return false;
+}
 
-		// Create and initialize the buffers
-		initBuffers();
-
-		return (mLoaded = true);
-	}
-
-	// We shouldn't get here so return failure
-	return false;
+void Mesh::processFaceVertex(
+    const std::string& faceData,
+    const std::vector<glm::vec3>& tempVertices,
+    const std::vector<glm::vec2>& tempUVs,
+    std::vector<unsigned int>& vertexIndices,
+    std::vector<unsigned int>& uvIndices)
+{
+    int p = 0, t = 0, n = 0;
+    if (sscanf(faceData.c_str(), "%d/%d/%d", &p, &t, &n) >= 2)
+    {
+        vertexIndices.push_back(p);
+        uvIndices.push_back(t);
+    }
+    else if (sscanf(faceData.c_str(), "%d//%d", &p, &n) == 2)
+    {
+        vertexIndices.push_back(p);
+    }
+    else if (sscanf(faceData.c_str(), "%d", &p) == 1)
+    {
+        vertexIndices.push_back(p);
+    }
+    else
+    {
+        std::cerr << "Failed to parse face vertex: " << faceData << std::endl;
+    }
 }
 
 //-----------------------------------------------------------------------------

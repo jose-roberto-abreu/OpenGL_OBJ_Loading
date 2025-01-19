@@ -36,6 +36,7 @@ public:
 private:
 
 	void initBuffers();
+    void processFaceVertex(const std::string& faceData, const std::vector<glm::vec3>& tempVertices, const std::vector<glm::vec2>& tempUVs, std::vector<unsigned int>& vertexIndices, std::vector<unsigned int>& uvIndices);
 
 	bool mLoaded;
 	std::vector<Vertex> mVertices;

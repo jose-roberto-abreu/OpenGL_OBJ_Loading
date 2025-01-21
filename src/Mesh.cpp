@@ -90,9 +90,9 @@ bool Mesh::loadOBJ(const std::string& filename)
                     for (size_t i = 0; i < faceIndices.size() - 2; i++)
                     {
                         // Always create a triangle (triangulating the quad)
-                        processFaceVertex(faceIndices[0], tempVertices, tempUVs, vertexIndices, uvIndices);
-                        processFaceVertex(faceIndices[i + 1], tempVertices, tempUVs, vertexIndices, uvIndices);
-                        processFaceVertex(faceIndices[i + 2], tempVertices, tempUVs, vertexIndices, uvIndices);
+                        processFaceVertex(faceIndices[0], vertexIndices, uvIndices);
+                        processFaceVertex(faceIndices[i + 1], vertexIndices, uvIndices);
+                        processFaceVertex(faceIndices[i + 2], vertexIndices, uvIndices);
                     }
                 }
                 else
@@ -131,8 +131,6 @@ bool Mesh::loadOBJ(const std::string& filename)
 
 void Mesh::processFaceVertex(
     const std::string& faceData,
-    const std::vector<glm::vec3>& tempVertices,
-    const std::vector<glm::vec2>& tempUVs,
     std::vector<unsigned int>& vertexIndices,
     std::vector<unsigned int>& uvIndices)
 {

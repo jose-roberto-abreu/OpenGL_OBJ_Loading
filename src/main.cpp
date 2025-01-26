@@ -26,6 +26,7 @@
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
+#include "ImGuiFileDialog/ImGuiFileDialog.h"
 
 // Global Variables
 const char* APP_TITLE = "Render OBJ Models in OpenGL";
@@ -53,6 +54,37 @@ struct Rotation {
     float angle;       // Rotation angle in radians
     glm::vec3 axis;    // Rotation axis
 };
+
+void renderMenuBar()
+{
+    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::cout << "File was choosen" << std::endl;
+        }
+
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    if (ImGui::BeginMainMenuBar()) 
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Load", "Ctrl+L"))
+            {
+                IGFD::FileDialogConfig config;
+                config.path = ".";
+                config.countSelectionMax = 2;
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose files", ".obj, .jpg", config);
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+}
 
 //-----------------------------------------------------------------------------
 // Main Application Entry Point
@@ -131,11 +163,6 @@ int main()
 		glfwPollEvents();
 		update(deltaTime);
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        ImGui::ShowDemoWindow();
-
 		// Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -171,6 +198,12 @@ int main()
 			mesh[i].draw();			// Render the OBJ mesh
 			texture[i].unbind(0);	
 		}
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        renderMenuBar();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -247,8 +280,8 @@ bool initOpenGL()
 	glfwSetScrollCallback(gWindow, glfw_onMouseScroll);
 
 	// Hides and grabs cursor, unlimited movement
-	glfwSetInputMode(gWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	glfwSetCursorPos(gWindow, gWindowWidth / 2.0, gWindowHeight / 2.0);
+	// glfwSetInputMode(gWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// glfwSetCursorPos(gWindow, gWindowWidth / 2.0, gWindowHeight / 2.0);
 
 	glClearColor(0.23f, 0.38f, 0.47f, 1.0f);
 
@@ -314,7 +347,7 @@ void update(double elapsedTime)
 	fpsCamera.rotate((float)(gWindowWidth / 2.0 - mouseX) * MOUSE_SENSITIVITY, (float)(gWindowHeight / 2.0 - mouseY) * MOUSE_SENSITIVITY);
 
 	// Clamp mouse cursor to center of screen
-	glfwSetCursorPos(gWindow, gWindowWidth / 2.0, gWindowHeight / 2.0);
+	// glfwSetCursorPos(gWindow, gWindowWidth / 2.0, gWindowHeight / 2.0);
 
 	// Camera FPS movement
 

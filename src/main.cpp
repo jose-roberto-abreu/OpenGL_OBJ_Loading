@@ -23,6 +23,10 @@
 #include "Camera.h"
 #include "Mesh.h"
 
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+#include "imgui/backends/imgui_impl_opengl3.h"
+#include "ImGuiFileDialog/ImGuiFileDialog.h"
 
 // Global Variables
 const char* APP_TITLE = "Render OBJ Models in OpenGL";
@@ -44,11 +48,121 @@ void glfw_onMouseScroll(GLFWwindow* window, double deltaX, double deltaY);
 void update(double elapsedTime);
 void showFPS(GLFWwindow* window);
 bool initOpenGL();
+void initImGUI();
 
-struct Rotation {
-    float angle;       // Rotation angle in radians
-    glm::vec3 axis;    // Rotation axis
-};
+Mesh* selectedMesh = nullptr;
+Texture2D* selectedTexture = nullptr;
+bool showModelLoaderTool = false;
+
+std::string modelPath;
+std::string texturePath;
+
+void renderMenuBar()
+{
+    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            auto selectedFiles = ImGuiFileDialog::Instance()->GetSelection();
+
+            for (const auto& file: selectedFiles) 
+            {
+                const std::string ext = file.first.substr(file.first.find("."));
+                if (ext == ".obj")
+                {
+                    modelPath = file.second;
+                } else {
+                    texturePath = file.second;
+                }
+            }
+        }
+
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    if (ImGui::BeginMainMenuBar()) 
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Load", "Ctrl+L"))
+            {
+                showModelLoaderTool = true;
+            }
+
+            ImGui::Separator();
+            if (ImGui::MenuItem("Exit", "Alt+F4"))
+            {
+                glfwSetWindowShouldClose(gWindow, true);
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+
+    if (showModelLoaderTool)
+    {
+        ImGui::Begin("Model loader", &showModelLoaderTool);
+    
+        ImGui::Text("3D Model");
+        ImGui::SameLine();
+        if (ImGui::Button("...##3D"))
+        {
+            IGFD::FileDialogConfig config;
+            config.path = ".";
+            const char *filters = "Models files (*.obj){.obj}";
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose files", filters, config);
+        }
+
+        ImGui::Text("Texture");
+        ImGui::SameLine();
+        if (ImGui::Button("...##Texture"))
+        {
+            IGFD::FileDialogConfig config;
+            config.path = ".";
+            const char *filters = "Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg}";
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose files", filters, config);
+        }
+
+        if (ImGui::Button("Save"))
+        {
+            if (!modelPath.empty() && !texturePath.empty())
+            {
+                selectedMesh = new Mesh();
+                selectedMesh->loadModel(modelPath);
+
+                selectedTexture = new Texture2D();
+                selectedTexture->loadTexture(texturePath);
+
+                showModelLoaderTool = false;
+            } else {
+                ImGui::OpenPopup("Validation Error");
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+        {
+            modelPath.clear();
+            texturePath.clear();
+            showModelLoaderTool = false;
+        }
+
+        if (ImGui::BeginPopupModal("Validation Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Both model and texture files must be selected.\n\n");
+            ImGui::Separator();
+
+            if (ImGui::Button("OK", ImVec2(120, 0)))
+            {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::End();
+    }
+}
 
 //-----------------------------------------------------------------------------
 // Main Application Entry Point
@@ -62,54 +176,10 @@ int main()
 		return -1;
 	}
 
+    initImGUI();
+
 	ShaderProgram shaderProgram;
 	shaderProgram.loadShaders("shaders/basic.vert", "shaders/basic.frag");
-
-	// Load meshes and textures
-	constexpr int numModels = 5;
-	Mesh mesh[numModels];
-	Texture2D texture[numModels];
-
-	mesh[0].loadOBJ("models/crate.obj");
-	mesh[1].loadOBJ("models/woodcrate.obj");
-	mesh[2].loadOBJ("models/robot.obj");
-	mesh[3].loadOBJ("models/floor.obj");
-    mesh[4].loadOBJ("models/skull.obj");
-	// mesh[4].loadOBJ("models/cottage_obj.obj");
-
-	texture[0].loadTexture("textures/crate.jpg", true);
-	texture[1].loadTexture("textures/woodcrate_diffuse.jpg", true);
-	texture[2].loadTexture("textures/robot_diffuse.jpg", true);
-	texture[3].loadTexture("textures/tile_floor.jpg", true);
-    texture[4].loadTexture("textures/skull.jpg", true);
-	// texture[4].loadTexture("textures/cottage_diffuse.png", true);
-
-	// Model positions
-	glm::vec3 modelPos[] = {
-		glm::vec3(-2.5f, 1.0f, 0.0f),	// crate1
-		glm::vec3(2.5f, 1.0f, 0.0f),	// crate2
-		glm::vec3(0.0f, 0.0f, -2.0f),	// robot
-		glm::vec3(0.0f, 0.0f, 0.0f),	// floor
-        glm::vec3(4.5f, 2.0f, 0.0f)
-	};
-
-	// Model scale
-	glm::vec3 modelScale[] = {
-		glm::vec3(1.0f, 1.0f, 1.0f),	// crate1
-		glm::vec3(1.0f, 1.0f, 1.0f),	// crate2
-		glm::vec3(1.0f, 1.0f, 1.0f),	// robot
-		glm::vec3(10.0f, 1.0f, 10.0f),	// floor
-        glm::vec3(0.1f, 0.1f, 0.1f)
-	};
-
-    // Model rotations
-    Rotation modelRotations[] = {
-        {0.0f, glm::vec3(0.0f, 1.0f, 0.0f)},  // crate1: no rotation
-        {0.0f, glm::vec3(0.0f, 1.0f, 0.0f)},  // crate2: no rotation
-        {0.0f, glm::vec3(0.0f, 1.0f, 0.0f)},  // robot: no rotation
-        {0.0f, glm::vec3(0.0f, 1.0f, 0.0f)},  // floor: no rotation
-        {glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)}  // last model: 90° around x-axis
-    };
 
 	double lastTime = glfwGetTime();
 
@@ -144,28 +214,46 @@ int main()
 		shaderProgram.setUniform("view", view);
 		shaderProgram.setUniform("projection", projection);
 
-		// Render the scene
-		for (int i = 0; i < numModels; i++)
-		{
-            glm::mat4 position = glm::translate(glm::mat4(1.0), modelPos[i]);
-            glm::mat4 modelScaling = glm::scale(glm::mat4(1.0), modelScale[i]);
+        // Render the scene
+        glm::mat4 position = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 0.0f, 0.0f));
+        glm::mat4 scaling = glm::scale(glm::mat4(1.0), glm::vec3(1.0f, 1.0f, 1.0f));
 
-            Rotation rotation = modelRotations[i];
-            glm::mat4 modelRotation = glm::rotate(glm::mat4(1.0f), rotation.angle, rotation.axis);
+        model = position * scaling;
+        shaderProgram.setUniform("model", model);
 
-			model = position * modelRotation * modelScaling;
-			shaderProgram.setUniform("model", model);
+        if (selectedTexture != nullptr) 
+        {
+            selectedTexture->bind();
+        }
 
-			texture[i].bind(0);		// set the texture before drawing.  Our simple OBJ mesh loader does not do materials yet.
-			mesh[i].draw();			// Render the OBJ mesh
-			texture[i].unbind(0);	
-		}
+        if (selectedMesh != nullptr) 
+        {
+            selectedMesh->draw();
+        }
+
+        if (selectedTexture != nullptr) 
+        {
+            selectedTexture->unbind(0);
+        }
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        renderMenuBar();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		// Swap front and back buffers
 		glfwSwapBuffers(gWindow);
 
 		lastTime = currentTime;
 	}
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
 	glfwTerminate();
 
@@ -229,8 +317,8 @@ bool initOpenGL()
 	glfwSetScrollCallback(gWindow, glfw_onMouseScroll);
 
 	// Hides and grabs cursor, unlimited movement
-	glfwSetInputMode(gWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	glfwSetCursorPos(gWindow, gWindowWidth / 2.0, gWindowHeight / 2.0);
+	// glfwSetInputMode(gWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// glfwSetCursorPos(gWindow, gWindowWidth / 2.0, gWindowHeight / 2.0);
 
 	glClearColor(0.23f, 0.38f, 0.47f, 1.0f);
 
@@ -274,11 +362,11 @@ void glfw_onFramebufferSize(GLFWwindow* window, int width, int height)
 //-----------------------------------------------------------------------------
 void glfw_onMouseScroll(GLFWwindow* window, double deltaX, double deltaY)
 {
-	double fov = fpsCamera.getFOV() + deltaY * ZOOM_SENSITIVITY;
+	// double fov = fpsCamera.getFOV() + deltaY * ZOOM_SENSITIVITY;
 
-	fov = glm::clamp(fov, 1.0, 120.0);
+	// fov = glm::clamp(fov, 1.0, 120.0);
 
-	fpsCamera.setFOV((float)fov);
+	// fpsCamera.setFOV((float)fov);
 }
 
 //-----------------------------------------------------------------------------
@@ -287,16 +375,16 @@ void glfw_onMouseScroll(GLFWwindow* window, double deltaX, double deltaY)
 void update(double elapsedTime)
 {
 	// Camera orientation
-	double mouseX, mouseY;
+	// double mouseX, mouseY;
 
 	// Get the current mouse cursor position delta
-	glfwGetCursorPos(gWindow, &mouseX, &mouseY);
+	// glfwGetCursorPos(gWindow, &mouseX, &mouseY);
 
 	// Rotate the camera the difference in mouse distance from the center screen.  Multiply this delta by a speed scaler
-	fpsCamera.rotate((float)(gWindowWidth / 2.0 - mouseX) * MOUSE_SENSITIVITY, (float)(gWindowHeight / 2.0 - mouseY) * MOUSE_SENSITIVITY);
+	// fpsCamera.rotate((float)(gWindowWidth / 2.0 - mouseX) * MOUSE_SENSITIVITY, (float)(gWindowHeight / 2.0 - mouseY) * MOUSE_SENSITIVITY);
 
 	// Clamp mouse cursor to center of screen
-	glfwSetCursorPos(gWindow, gWindowWidth / 2.0, gWindowHeight / 2.0);
+	// glfwSetCursorPos(gWindow, gWindowWidth / 2.0, gWindowHeight / 2.0);
 
 	// Camera FPS movement
 
@@ -353,4 +441,13 @@ void showFPS(GLFWwindow* window)
 	}
 
 	frameCount++;
+}
+
+void initImGUI() 
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGui_ImplGlfw_InitForOpenGL(gWindow, true);  
+    ImGui_ImplOpenGL3_Init();
 }

@@ -3,3 +3,5 @@ Debug
 .vscode
 **.o
 main
+.DS_Store
+imgui.ini

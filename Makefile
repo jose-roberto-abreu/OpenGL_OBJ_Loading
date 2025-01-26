@@ -21,7 +21,8 @@ OBJ = Texture2D.o \
 	common/includes/imgui/imgui_tables.o \
 	common/includes/imgui/imgui_widgets.o \
 	common/includes/imgui/backends/imgui_impl_glfw.o \
-	common/includes/imgui/backends/imgui_impl_opengl3.o
+	common/includes/imgui/backends/imgui_impl_opengl3.o \
+	common/includes/ImGuiFileDialog/ImGuiFileDialog.o
 
 WARNINGS=-w
 

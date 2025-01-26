@@ -30,7 +30,7 @@ public:
 	 Mesh();
 	~Mesh();
 
-	bool loadOBJ(const std::string& filename);
+    void loadModel(const std::string& filename);
 	void draw();
 
 private:

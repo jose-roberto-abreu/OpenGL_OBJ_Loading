@@ -4,7 +4,8 @@ LIBS = -L. \
       -lglew32 \
 	  -lglfw3 \
 	  -lopengl32 \
-	  -lgdi32
+	  -lgdi32 \
+	  -lassimp-5
 
 INCLUDES = -I./common/includes \
 		   -I./headers \
@@ -32,7 +33,9 @@ ifeq ($(UNAME_S),Darwin)
 FRAMEWORKS=-framework OpenGL
 
 LIBS= -L/opt/homebrew/opt/glfw/lib \
-	  -lglfw
+	  -L/opt/homebrew/opt/assimp/lib \
+	  -lglfw \
+	  -lassimp
 
 INCLUDES=-I./headers \
 		-I/opt/homebrew/opt/glfw/include \

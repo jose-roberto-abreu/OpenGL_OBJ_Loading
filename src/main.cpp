@@ -67,7 +67,8 @@ void renderMenuBar()
                 if (ext == ".obj")
                 {
                     selectedMesh = new Mesh();
-                    selectedMesh->loadOBJ(file.second);
+                    selectedMesh->loadModel(file.second);
+                    // selectedMesh->loadOBJ(file.second);
                 }
                 else if (ext == ".jpg")
                 {

@@ -8,6 +8,9 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 //-----------------------------------------------------------------------------
 // Constructor
@@ -26,132 +29,42 @@ Mesh::~Mesh()
 	glDeleteBuffers(1, &mVBO);
 }
 
-//-----------------------------------------------------------------------------
-// Loads a Wavefront OBJ model
-//
-// NOTE: This is not a complete, full featured OBJ loader.  It is greatly
-// simplified.
-// Assumptions!
-//  - OBJ file must contain only triangles
-//  - We ignore materials
-//  - We ignore normals
-//  - only commands "v", "vt" and "f" are supported
-//-----------------------------------------------------------------------------
-bool Mesh::loadOBJ(const std::string& filename)
+void Mesh::loadModel(const std::string& path)
 {
-    std::vector<unsigned int> vertexIndices, uvIndices;
-    std::vector<glm::vec3> tempVertices;
-    std::vector<glm::vec2> tempUVs;
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
 
-    if (filename.find(".obj") != std::string::npos)
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) 
     {
-        std::ifstream fin(filename, std::ios::in);
-        if (!fin)
+        std::cerr << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
+        return;
+    }
+
+    std::cout << "Number of meshes: " << scene->mNumMeshes << std::endl;
+    for (unsigned int i = 0; i < scene->mNumMeshes; i++) 
+    {
+        aiMesh *mesh = scene->mMeshes[i];
+
+        for (unsigned int j = 0; j < mesh->mNumVertices; j++) 
         {
-            std::cerr << "Cannot open " << filename << std::endl;
-            return false;
-        }
-
-        std::cout << "Loading OBJ file " << filename << " ..." << std::endl;
-
-        std::string lineBuffer;
-        while (std::getline(fin, lineBuffer))
-        {
-            if (lineBuffer.substr(0, 2) == "v ")
+            Vertex aVertex;
+            
+            aiVector3D vertex = mesh->mVertices[j];
+            aVertex.position = glm::vec3(vertex.x, vertex.y, vertex.z);
+            
+            if (mesh->HasTextureCoords(0))
             {
-                std::istringstream v(lineBuffer.substr(2));
-                glm::vec3 vertex;
-                v >> vertex.x; v >> vertex.y; v >> vertex.z;
-                tempVertices.push_back(vertex);
+                aiVector3D texCoord = mesh->mTextureCoords[0][j];
+                aVertex.texCoords = glm::vec2(texCoord.x, texCoord.y);
             }
-            else if (lineBuffer.substr(0, 2) == "vt")
-            {
-                std::istringstream vt(lineBuffer.substr(3));
-                glm::vec2 uv;
-                vt >> uv.s; vt >> uv.t;
-                tempUVs.push_back(uv);
-            }
-            else if (lineBuffer.substr(0, 2) == "f ")
-            {
-                // Parse the face data
-                std::istringstream f(lineBuffer.substr(2));
-                std::vector<std::string> faceIndices;
-                std::string indexGroup;
 
-                while (f >> indexGroup)
-                {
-                    faceIndices.push_back(indexGroup);
-                }
-
-                // Check if it's a triangle or a quad
-                if (faceIndices.size() == 3 || faceIndices.size() == 4)
-                {
-                    // Process face as triangles
-                    for (size_t i = 0; i < faceIndices.size() - 2; i++)
-                    {
-                        // Always create a triangle (triangulating the quad)
-                        processFaceVertex(faceIndices[0], vertexIndices, uvIndices);
-                        processFaceVertex(faceIndices[i + 1], vertexIndices, uvIndices);
-                        processFaceVertex(faceIndices[i + 2], vertexIndices, uvIndices);
-                    }
-                }
-                else
-                {
-                    std::cerr << "Unsupported face format in OBJ file" << std::endl;
-                }
-            }
+            mVertices.push_back(aVertex);
         }
-
-        // Close the file
-        fin.close();
-
-        // For each vertex of each triangle
-        for (unsigned int i = 0; i < vertexIndices.size(); i++)
-        {
-            // Get the attributes using the indices
-            glm::vec3 vertex = tempVertices[vertexIndices[i] - 1];
-            glm::vec2 uv = tempUVs[uvIndices[i] - 1];
-
-            Vertex meshVertex;
-            meshVertex.position = vertex;
-            meshVertex.texCoords = uv;
-
-            mVertices.push_back(meshVertex);
-        }
-
-        // Create and initialize the buffers
-        initBuffers();
-
-        return (mLoaded = true);
     }
 
-    // We shouldn't get here so return failure
-    return false;
-}
-
-void Mesh::processFaceVertex(
-    const std::string& faceData,
-    std::vector<unsigned int>& vertexIndices,
-    std::vector<unsigned int>& uvIndices)
-{
-    int p = 0, t = 0, n = 0;
-    if (sscanf(faceData.c_str(), "%d/%d/%d", &p, &t, &n) >= 2)
-    {
-        vertexIndices.push_back(p);
-        uvIndices.push_back(t);
-    }
-    else if (sscanf(faceData.c_str(), "%d//%d", &p, &n) == 2)
-    {
-        vertexIndices.push_back(p);
-    }
-    else if (sscanf(faceData.c_str(), "%d", &p) == 1)
-    {
-        vertexIndices.push_back(p);
-    }
-    else
-    {
-        std::cerr << "Failed to parse face vertex: " << faceData << std::endl;
-    }
+    std::cout << "Model has been loaded" << std::endl;
+    mLoaded = true;
+    initBuffers();
 }
 
 //-----------------------------------------------------------------------------

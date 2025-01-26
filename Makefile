@@ -16,6 +16,7 @@ OBJ = Texture2D.o \
 	Mesh.o \
 	Camera.o \
 	common/includes/imgui/imgui.o \
+	common/includes/imgui/imgui_demo.o \
 	common/includes/imgui/imgui_draw.o \
 	common/includes/imgui/imgui_tables.o \
 	common/includes/imgui/imgui_widgets.o \

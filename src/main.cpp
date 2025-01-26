@@ -23,6 +23,9 @@
 #include "Camera.h"
 #include "Mesh.h"
 
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+#include "imgui/backends/imgui_impl_opengl3.h"
 
 // Global Variables
 const char* APP_TITLE = "Render OBJ Models in OpenGL";
@@ -44,6 +47,7 @@ void glfw_onMouseScroll(GLFWwindow* window, double deltaX, double deltaY);
 void update(double elapsedTime);
 void showFPS(GLFWwindow* window);
 bool initOpenGL();
+void initImGUI();
 
 struct Rotation {
     float angle;       // Rotation angle in radians
@@ -61,6 +65,8 @@ int main()
 		std::cerr << "GLFW initialization failed" << std::endl;
 		return -1;
 	}
+
+    initImGUI();
 
 	ShaderProgram shaderProgram;
 	shaderProgram.loadShaders("shaders/basic.vert", "shaders/basic.frag");
@@ -125,6 +131,11 @@ int main()
 		glfwPollEvents();
 		update(deltaTime);
 
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::ShowDemoWindow();
+
 		// Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -161,11 +172,18 @@ int main()
 			texture[i].unbind(0);	
 		}
 
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		// Swap front and back buffers
 		glfwSwapBuffers(gWindow);
 
 		lastTime = currentTime;
 	}
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
 	glfwTerminate();
 
@@ -353,4 +371,13 @@ void showFPS(GLFWwindow* window)
 	}
 
 	frameCount++;
+}
+
+void initImGUI() 
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGui_ImplGlfw_InitForOpenGL(gWindow, true);  
+    ImGui_ImplOpenGL3_Init();
 }

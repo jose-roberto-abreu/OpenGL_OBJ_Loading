@@ -135,6 +135,8 @@ void renderMenuBar()
                 selectedTexture = new Texture2D();
                 selectedTexture->loadTexture(texturePath);
 
+                modelPath.clear();
+                texturePath.clear();
                 showModelLoaderTool = false;
             } else {
                 ImGui::OpenPopup("Validation Error");

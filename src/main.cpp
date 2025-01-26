@@ -52,6 +52,10 @@ void initImGUI();
 
 Mesh* selectedMesh = nullptr;
 Texture2D* selectedTexture = nullptr;
+bool showModelLoaderTool = false;
+
+std::string modelPath;
+std::string texturePath;
 
 void renderMenuBar()
 {
@@ -66,14 +70,9 @@ void renderMenuBar()
                 const std::string ext = file.first.substr(file.first.find("."));
                 if (ext == ".obj")
                 {
-                    selectedMesh = new Mesh();
-                    selectedMesh->loadModel(file.second);
-                    // selectedMesh->loadOBJ(file.second);
-                }
-                else if (ext == ".jpg")
-                {
-                    selectedTexture = new Texture2D();
-                    selectedTexture->loadTexture(file.second);
+                    modelPath = file.second;
+                } else {
+                    texturePath = file.second;
                 }
             }
         }
@@ -87,11 +86,7 @@ void renderMenuBar()
         {
             if (ImGui::MenuItem("Load", "Ctrl+L"))
             {
-                IGFD::FileDialogConfig config;
-                config.path = ".";
-                config.countSelectionMax = 2;
-                const char *filters = "Models files (*.obj){.obj},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg}";
-                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose files", filters, config);
+                showModelLoaderTool = true;
             }
 
             ImGui::Separator();
@@ -104,6 +99,68 @@ void renderMenuBar()
         }
 
         ImGui::EndMainMenuBar();
+    }
+
+    if (showModelLoaderTool)
+    {
+        ImGui::Begin("Model loader", &showModelLoaderTool);
+    
+        ImGui::Text("3D Model");
+        ImGui::SameLine();
+        if (ImGui::Button("...##3D"))
+        {
+            IGFD::FileDialogConfig config;
+            config.path = ".";
+            const char *filters = "Models files (*.obj){.obj}";
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose files", filters, config);
+        }
+
+        ImGui::Text("Texture");
+        ImGui::SameLine();
+        if (ImGui::Button("...##Texture"))
+        {
+            IGFD::FileDialogConfig config;
+            config.path = ".";
+            const char *filters = "Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg}";
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose files", filters, config);
+        }
+
+        if (ImGui::Button("Save"))
+        {
+            if (!modelPath.empty() && !texturePath.empty())
+            {
+                selectedMesh = new Mesh();
+                selectedMesh->loadModel(modelPath);
+
+                selectedTexture = new Texture2D();
+                selectedTexture->loadTexture(texturePath);
+
+                showModelLoaderTool = false;
+            } else {
+                ImGui::OpenPopup("Validation Error");
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+        {
+            modelPath.clear();
+            texturePath.clear();
+            showModelLoaderTool = false;
+        }
+
+        if (ImGui::BeginPopupModal("Validation Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Both model and texture files must be selected.\n\n");
+            ImGui::Separator();
+
+            if (ImGui::Button("OK", ImVec2(120, 0)))
+            {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::End();
     }
 }
 

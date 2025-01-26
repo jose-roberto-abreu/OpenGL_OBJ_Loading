@@ -90,7 +90,8 @@ void renderMenuBar()
                 IGFD::FileDialogConfig config;
                 config.path = ".";
                 config.countSelectionMax = 2;
-                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose files", ".obj,.jpg", config);
+                const char *filters = "Models files (*.obj){.obj},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg}";
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose files", filters, config);
             }
 
             ImGui::Separator();

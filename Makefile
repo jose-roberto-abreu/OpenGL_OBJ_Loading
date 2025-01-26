@@ -6,12 +6,21 @@ LIBS = -L. \
 	  -lopengl32 \
 	  -lgdi32
 
-INCLUDES = -I./common/includes -I./headers
+INCLUDES = -I./common/includes \
+		   -I./headers \
+		   -I./common/includes/imgui \
+		   -I./common/includes/imgui/backends
 
 OBJ = Texture2D.o \
 	ShaderProgram.o \
 	Mesh.o \
-	Camera.o
+	Camera.o \
+	common/includes/imgui/imgui.o \
+	common/includes/imgui/imgui_draw.o \
+	common/includes/imgui/imgui_tables.o \
+	common/includes/imgui/imgui_widgets.o \
+	common/includes/imgui/backends/imgui_impl_glfw.o \
+	common/includes/imgui/backends/imgui_impl_opengl3.o
 
 WARNINGS=-w
 
@@ -26,10 +35,10 @@ LIBS= -L/opt/homebrew/opt/glfw/lib \
 INCLUDES=-I./headers \
 		-I/opt/homebrew/opt/glfw/include \
 		-I./common/includes \
-		-I/usr/local/include
+		-I/usr/local/include \
+		-I./common/includes/imgui \
+		-I./common/includes/imgui/backends
 
-
-SRC=third-party-source-code/glad.c
 OBJ+=glad.o
 
 all: main
@@ -66,3 +75,6 @@ Mesh.o: src/Mesh.cpp headers/Mesh.h
 
 Camera.o: src/Camera.cpp headers/Camera.h
 	g++ -c src/Camera.cpp $(INCLUDES) $(WARNINGS) $(FLAGS)
+
+%.o: %.cpp
+	g++ -c $< -o $@ $(INCLUDES) $(WARNINGS) $(FLAGS)

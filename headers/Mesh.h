@@ -23,6 +23,12 @@ struct Vertex
 	glm::vec2 texCoords;
 };
 
+struct MeshEntry {
+    GLuint VAO, VBO, EBO; // Buffers per mesh
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+};
+
 class Mesh
 {
 public:
@@ -41,4 +47,6 @@ private:
 	bool mLoaded;
 	std::vector<Vertex> mVertices;
 	GLuint mVBO, mVAO;
+
+    std::vector<MeshEntry> mMeshes;
 };
